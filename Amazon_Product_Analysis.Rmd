@@ -68,6 +68,26 @@ Amazon_Products_Cleaned %>%
             )
 ```
 
+## Manufacturer Analysis
+
+For our analysis, we consider big manufacturer those that have 50 or more products listed.
+```{r}
+Big_Manufacturer <- Amazon_Products_Cleaned %>% 
+  group_by(manufacturer) %>%
+  filter(n() >= 50)
+```
+
+We observe that there are 24 manufacturers that have 50 or more product listings.
+```{r}
+n_distinct(Big_Manufacturer$manufacturer)
+```
+```{r}
+counts <- table(Big_Manufacturer$manufacturer)
+barplot(counts, las = 2,
+        cex.names = 0.7,main="Manufacturer Distribution", ylab = "Number of Product Listings")
+```
+
+
 
 ## Plots
 ###Boxplot
