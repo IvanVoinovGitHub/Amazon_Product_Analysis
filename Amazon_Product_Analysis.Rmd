@@ -4,9 +4,11 @@ authors: 'Nathan Thomas, Benjamin Tuohey, Ivan Voinov'
 output: html_notebook
 ---
 
+
+
 # Importing/Cleaning Data
 ```{r}
-Amazon_Products <- read.csv('Amazon_Product.csv')
+Amazon_Products <- read.csv('Amazon_Products.csv')
 head(Amazon_Products)
 ```
 
@@ -39,7 +41,7 @@ Amazon_Products_Cleaned$price<-gsub("£","",as.character(Amazon_Products_Cleaned
 ```{r}
 library(tidyverse)
 Amazon_Products_Cleaned <- Amazon_Products_Cleaned %>%
-  mutate(price = as.numeric(price), 
+  mutate(price = as.numeric(as.character(Amazon_Products_Cleaned$price)), 
          number_of_reviews = as.numeric(number_of_reviews),
          number_of_answered_questions = as.numeric(number_of_answered_questions))
 Amazon_Products_Cleaned$price <- Amazon_Products_Cleaned$price*1.30
@@ -70,6 +72,18 @@ Amazon_Products_Cleaned %>%
 
 ## Manufacturer Analysis
 
+```{r}
+Dis_Manufacturer <- Amazon_Products_Cleaned %>% 
+  group_by(manufacturer) %>%
+  filter(n() >= 1)
+```
+
+Here we see there are 2654 unique manufacturers in our data. 
+```{r}
+n_distinct(Dis_Manufacturer$manufacturer)
+```
+
+
 For our analysis, we consider big manufacturer those that have 50 or more products listed.
 ```{r}
 Big_Manufacturer <- Amazon_Products_Cleaned %>% 
@@ -81,12 +95,18 @@ We observe that there are 24 manufacturers that have 50 or more product listings
 ```{r}
 n_distinct(Big_Manufacturer$manufacturer)
 ```
+Manufacturer Distribution
 ```{r}
 counts <- table(Big_Manufacturer$manufacturer)
 barplot(counts, las = 2,
         cex.names = 0.7,main="Manufacturer Distribution", ylab = "Number of Product Listings")
 ```
 
+Sorted Distribution
+```{r}
+barplot(sort(counts, decreasing = TRUE), las = 2,
+        cex.names = 0.7,main="Manufacturer Distribution", ylab = "Number of Product Listings")
+```
 
 
 ## Plots
@@ -104,8 +124,10 @@ Amazon_Products_Cleaned %>%
   geom_boxplot() +
   ylim(0,25)
 ```
-
-
+Density Plot of Price Distribution (Skewed to the right)
+```{r}
+ggplot(data = Amazon_Products_Cleaned, aes(x = price)) + geom_density(fill = 'cyan')
+```
 
 
 
@@ -120,105 +142,8 @@ pairs(Amazon_Products_Cleaned_numeric)
 ```
 
 # Linear Regression
-## Validation setup
-```{r}
-
-set.seed(380)
-Amazon_Products_Cleaned_numeric <- Amazon_Products_Cleaned_numeric %>%
-  filter(is.na(price) == F)
-
-train_obs <- createDataPartition(Amazon_Products_Cleaned_numeric$price, , p = 0.5, list = FALSE)
-
-# generating training dataset from the train_obs
-training_df <- Amazon_Products_Cleaned_numeric[train_obs, ]
-training_df
-
-testing_df  <- Amazon_Products_Cleaned_numeric[-train_obs, ]
-testing_df
-```
-
-## Feature Selection
 
 ```{r}
-library(leaps)
-regfit_full = regsubsets(price ~ ., data = training_df,  nvmax = 4, method="exhaustive")
-summary(regfit_full)
-```
-
-```{r}
-reg_summary <- summary(regfit_full) #get the summary
-
-par(mfrow=c(2,2))
-#rss plot -  NOT USEFUL
-plot(reg_summary$rss ,xlab="Number of Variables ",ylab="RSS",type="l")
-
-#adjr2 plot
-plot(reg_summary$adjr2 ,xlab="Number of Variables ", ylab="Adjusted RSq",type="l")
-max_adjr2 <- which.max(reg_summary$adjr2)
-points(max_adjr2,reg_summary$adjr2[max_adjr2], col="red",cex=2,pch=20)
-
-# AIC criterion (Cp) to minimize
-plot(reg_summary$cp ,xlab="Number of Variables ",ylab="Cp", type='l')
-min_cp <- which.min(reg_summary$cp )
-points(min_cp, reg_summary$cp[min_cp],col="red",cex=2,pch=20)
-
-# BIC criterion to minimize
-plot(reg_summary$bic ,xlab="Number of Variables ",ylab="BIC",type='l')
-min_bic <- which.min(reg_summary$bic)
-points(min_bic,reg_summary$bic[min_bic],col="red",cex=2,pch=20)
-```
-
-## Model Analysis
-```{r}
-model_full <- lm(price ~ 0+., data = training_df)
-summary(model_full)
-```
-
-```{r}
-simp_model <- lm(price~0+average_review_rating, data = training_df)
-summary(simp_model)
-```
-
-## Cross-validation
-
-```{r}
-predictions <- predict(model_full, testing_df)
-```
-
-```{r}
-data.frame( R2 = R2(predictions, testing_df$price, na.rm=T),
-            RMSE = RMSE(predictions, testing_df$price, na.rm=T),
-            MSE = RMSE(predictions, testing_df$price, na.rm=T)^2,
-            MAE = MAE(predictions, testing_df$price, na.rm=T))
-```
-
-```{r}
-model1 <- lm(data = training_df, price ~ poly(average_review_rating,2))
+model1 <- lm(price ~ ., data = Amazon_Products_Cleaned_numeric)
 summary(model1)
-
-# power 3
-model2 <- lm(data = training_df, price ~ poly(average_review_rating,3))
-summary(model2)
 ```
-
-```{r}
-predictions1 <- predict(model1, testing_df)
-
-predictions2 <- predict(model2, testing_df)
-```
-
-```{r}
-rbind(data.frame( R2 = R2(predictions, testing_df$price, na.rm=T),
-            RMSE = RMSE(predictions, testing_df$price, na.rm=T),
-            MSE = RMSE(predictions, testing_df$price, na.rm=T)^2,
-            MAE = MAE(predictions, testing_df$price, na.rm=T)),
-data.frame( R2 = R2(predictions, testing_df$price, na.rm=T),
-            RMSE = RMSE(predictions, testing_df$price, na.rm=T),
-            MSE = RMSE(predictions, testing_df$price, na.rm=T)^2,
-            MAE = MAE(predictions, testing_df$price, na.rm=T)))
-```
-
-## Assumption Checking
-
-
-
