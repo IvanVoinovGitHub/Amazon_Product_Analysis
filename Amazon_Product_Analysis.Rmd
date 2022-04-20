@@ -175,8 +175,119 @@ get_eig(res)
 
 
 # Linear Regression
+## Validation setup
+```{r}
+
+set.seed(380)
+Amazon_Products_Cleaned_numeric <- Amazon_Products_Cleaned_numeric %>%
+  filter(is.na(price) == F, is.na(average_review_rating) == F)
+
+train_obs <- createDataPartition(Amazon_Products_Cleaned_numeric$price, , p = 0.5, list = FALSE)
+
+# generating training dataset from the train_obs
+training_df <- Amazon_Products_Cleaned_numeric[train_obs, ]
+training_df
+
+testing_df  <- Amazon_Products_Cleaned_numeric[-train_obs, ]
+testing_df
+```
+Here we split the data into only the numeric variables and then into testing and training sets. We decided to go with the validation set approach because of it's simplicity to implement and the dataset is relatively large so the LOOCV approach would be computationally expensive. Here we also removed observations that have NA values that would be problems later in the analysis.
+
+## Feature Selection
 
 ```{r}
-model1 <- lm(price ~ ., data = Amazon_Products_Cleaned_numeric)
-summary(model1)
+library(leaps)
+regfit_full = regsubsets(price ~ ., data = training_df,  nvmax = 4, method="exhaustive")
+summary(regfit_full)
 ```
+From this summary we can see that the average review rating is the most important feature followed by number of answered questions and then number of reviews.
+
+```{r}
+reg_summary <- summary(regfit_full) #get the summary
+
+par(mfrow=c(2,2))
+#rss plot -  NOT USEFUL
+plot(reg_summary$rss ,xlab="Number of Variables ",ylab="RSS",type="l")
+
+#adjr2 plot
+plot(reg_summary$adjr2 ,xlab="Number of Variables ", ylab="Adjusted RSq",type="l")
+max_adjr2 <- which.max(reg_summary$adjr2)
+points(max_adjr2,reg_summary$adjr2[max_adjr2], col="red",cex=2,pch=20)
+
+# AIC criterion (Cp) to minimize
+plot(reg_summary$cp ,xlab="Number of Variables ",ylab="Cp", type='l')
+min_cp <- which.min(reg_summary$cp )
+points(min_cp, reg_summary$cp[min_cp],col="red",cex=2,pch=20)
+
+# BIC criterion to minimize
+plot(reg_summary$bic ,xlab="Number of Variables ",ylab="BIC",type='l')
+min_bic <- which.min(reg_summary$bic)
+points(min_bic,reg_summary$bic[min_bic],col="red",cex=2,pch=20)
+```
+Here are four plots with different criteria for how many predictors is best. Using Cp and Adjusted R-Squared criteria the full model is the best while a simple model is best according to BIC criteria. Knowing this we will first consider two models, one with all the predictors and one with just the number of reviews. One thing of note with these plots is that the values for RSS are extremely high and the value for adjusted R-Squared is extremely low. This will be discussed more in the conclusion of this section.
+
+## Model Analysis
+```{r}
+model_full <- lm(price ~ ., data = training_df)
+summary(model_full)
+```
+Here is the summary of the full model using all predictors. With p-values of 0.82 and 0.11 the intercept and number of reviews are not significant to the model when added last, respectively. The other two predictors are significant with a 0.05 significance level. 
+
+```{r}
+simp_model <- lm(price~average_review_rating, data = training_df)
+summary(simp_model)
+```
+Here is the simple model with just average review rating. Like the full model the intercept is not significant with a p-value of 0.86. Knowing this, let's try a simple model without the intercept.
+
+```{r}
+simp_model_noint <- lm(price~0+average_review_rating, data = training_df)
+summary(simp_model_noint)
+```
+This model gives us a much better R-squared value while having similar values for error. With that in mind, this is the model that will be used going forward.
+
+## Cross-validation
+
+```{r}
+predictions <- predict(simp_model_noint, testing_df)
+```
+
+```{r}
+data.frame( R2 = R2(predictions, testing_df$price, na.rm=T),
+            RMSE = RMSE(predictions, testing_df$price, na.rm=T),
+            MSE = RMSE(predictions, testing_df$price, na.rm=T)^2,
+            MAE = MAE(predictions, testing_df$price, na.rm=T))
+```
+Here the values for error are relatively high and R-squared is low. This shows that even one of the best models is not such a good fit. Let's try adding some higher order terms.
+
+```{r}
+model1 <- lm(data = training_df, price ~ poly(average_review_rating,2))
+summary(model1)
+
+```
+
+```{r}
+# power 3
+model2 <- lm(data = training_df, price ~ poly(average_review_rating,3))
+summary(model2)
+```
+Here we can see that the quadratic model is significant while the cubic model is not. Let's compare the simple model and the quadratic model.
+
+```{r}
+predictions1 <- predict(model1, testing_df)
+
+```
+
+```{r}
+rbind(data.frame( R2 = R2(predictions, testing_df$price, na.rm=T),
+            RMSE = RMSE(predictions, testing_df$price, na.rm=T),
+            MSE = RMSE(predictions, testing_df$price, na.rm=T)^2,
+            MAE = MAE(predictions, testing_df$price, na.rm=T)),
+data.frame( R2 = R2(predictions1, testing_df$price, na.rm=T),
+            RMSE = RMSE(predictions1, testing_df$price, na.rm=T),
+            MSE = RMSE(predictions1, testing_df$price, na.rm=T)^2,
+            MAE = MAE(predictions1, testing_df$price, na.rm=T)))
+```
+The quadratic model is better in almost all respects, but not by much.
+
+## Conclusions
+With everything in mind from the previous sections, we conclude that linear regression is not a good fit for this dataset. Even the best models have very low values for R-squared and high values for error, and testing error is very high. No matter what model is used it would not be a good fit for making predictions about the future.
