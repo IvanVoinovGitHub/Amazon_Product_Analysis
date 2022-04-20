@@ -140,6 +140,39 @@ Amazon_Products_Cleaned_numeric <- Amazon_Products_Cleaned %>%
   select(price, number_of_reviews, number_of_answered_questions, average_review_rating)
 pairs(Amazon_Products_Cleaned_numeric)
 ```
+```{r}
+eu_dist<- dist(Amazon_Products_Cleaned_numeric, method = "euclidean", upper = TRUE )
+image(as.matrix(eu_dist), main = "Euclidean distance")
+
+```
+
+```{r}
+hc_single <- hclust(eu_dist, method= "single") #for single linkage
+hc_complete <- hclust(eu_dist, method = "complete") #for complete linkage 
+hc_average <- hclust(eu_dist, method = "average") # for average linkage
+hc_centroid <- hclost(eu_dist, method = "centroid") #for centroid linkage
+```
+
+```{r}
+plot(hc_single)
+plot(hc_complete)
+plot(hc_average)
+plot(hc_centroid)
+```
+
+```{r}
+fviz_dend(hc_complete)
+```
+
+```{r}
+res <- Amazon_Products_Cleaned_numeric %>% prcomp(scale = TRUE)
+res
+```
+
+```{r}
+get_eig(res)
+```
+
 
 # Linear Regression
 
