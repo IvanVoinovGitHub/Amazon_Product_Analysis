@@ -1,0 +1,96 @@
+---
+title: "amazon.clustering"
+author: "Benjamin Tuohey"
+date: "4/20/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(tidyverse)
+library(mdsr)
+library(cluster)
+library(factoextra)
+
+library(readr)
+Amazon_Products <- read_csv("Amazon_Products 2.csv")
+head(Amazon_Products)
+```
+
+```{r}
+Amazon_Products_Cleaned <- read_csv("Amazon_Products_Cleaned.csv")
+
+```
+
+
+```{r}
+Amazon_Products_Cleaned_numeric <- Amazon_Products_Cleaned %>%
+  select(price, number_of_reviews, number_of_answered_questions, average_review_rating)
+pairs(Amazon_Products_Cleaned_numeric)
+```
+
+
+```{r}
+library(stats)
+hclust()
+help(hclust)
+install.packages("vegan")
+library(vegan)
+library(permute)
+library(lattice)
+```
+
+```{r}
+eu_dist <- dist(Amazon_Products_Cleaned_numeric, method='euclidean', upper = TRUE)
+eu_dist <- get_dist(Amazon_Products_Cleaned_numeric, method = 'euclidean')
+image(as.matrix(eu_dist), main = "Euclidean distance")
+```
+
+```{r}
+hc_single   <- hclust(eu_dist, method='single') # for single linkage
+hc_complete <- hclust(eu_dist, method='complete') # for complete linkage
+hc_average  <- hclust(eu_dist, method='average') # for average linkage
+hc_centroid <- hclust(eu_dist, method='centroid') # for centroid linkage
+```
+
+
+```{r}
+plot(hc_single)
+plot(hc_complete)
+plot(hc_average)
+plot(hc_centroid)
+
+```
+
+
+```{r}
+fviz_dend(hc_complete)
+
+```
+
+
+```{r}
+res <- Amazon_Products_Cleaned_numeric %>% prcomp(scale = TRUE)
+res
+
+
+
+```
+
+```{r}
+get_eig(res)
+```
+
+
+
+
+
