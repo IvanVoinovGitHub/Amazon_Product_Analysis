@@ -146,14 +146,18 @@ image(as.matrix(eu_dist), main = "Euclidean distance")
 
 ```
 
+
 ```{r}
-hc_single <- hclust(eu_dist, method= "single") #for single linkage
-hc_complete <- hclust(eu_dist, method = "complete") #for complete linkage 
+# Creating a hierarchy of data trying different linkage methods 
+library(factoextra)
+hc_single <- hclust(eu_dist, method = "single") #for single linkage
+hc_complete <- hclust(eu_dist, "complete") #for complete linkage 
 hc_average <- hclust(eu_dist, method = "average") # for average linkage
-hc_centroid <- hclost(eu_dist, method = "centroid") #for centroid linkage
+hc_centroid <- hclust(eu_dist, method = "centroid") #for centroid linkage
 ```
 
 ```{r}
+#Visualizing by creating dendrogram for each
 plot(hc_single)
 plot(hc_complete)
 plot(hc_average)
@@ -161,17 +165,75 @@ plot(hc_centroid)
 ```
 
 ```{r}
+#
 fviz_dend(hc_complete)
 ```
 
 ```{r}
+#performing pca on data
 res <- Amazon_Products_Cleaned_numeric %>% prcomp(scale = TRUE)
 res
 ```
 
 ```{r}
+# how much variance is explained by each pc 
 get_eig(res)
 ```
+
+```{r}
+# take out missing values and find optimal number of clusters using k means
+Amazon_numeric_nomiss<- na.omit(Amazon_Products_Cleaned_numeric)
+Amazon_numeric_nomiss<- scale(Amazon_numeric_nomiss)
+set.seed(1234)
+fviz_nbclust(Amazon_numeric_nomiss, kmeans, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+
+```
+
+```{r}
+
+set.seed(123)
+fviz_nbclust(Amazon_numeric_nomiss, kmeans, method = "wss")
+
+```
+
+
+```{r}
+km<- kmeans(Amazon_numeric_nomiss, centers = 3, nstart = 25)
+print(km)
+```
+
+```{r}
+#plot results of k means model
+fviz_cluster(km, data = Amazon_numeric_nomiss)
+```
+
+```{r}
+res<- Amazon_numeric_nomiss %>% kmeans(3)
+str(res)
+```
+
+```{r}
+#silhouette widths
+library(cluster)
+distance<- get_dist(Amazon_numeric_nomiss, method = 'euclidean')
+sil<- silhouette(x= res$cluster, dist= distance)
+summary(sil)
+```
+
+```{r}
+sil %>% head()
+```
+
+```{r}
+fviz_silhouette(sil)
+```
+```{r}
+#gap statistic applied on kmeans clustering
+library(NbClust)
+NbClust(Amazon_numeric_nomiss,  distance = "euclidean", method = "kmeans", index='gap')
+```
+
 
 
 # Linear Regression
