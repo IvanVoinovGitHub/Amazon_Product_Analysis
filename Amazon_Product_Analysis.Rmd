@@ -207,6 +207,12 @@ print(km)
 #plot results of k means model
 fviz_cluster(km, data = Amazon_numeric_nomiss)
 ```
+```{r}
+#adding cluster into the data set and creating scatterplot
+Amazon_numeric_nomiss$cluster<- km$cluster
+ggplot(Amazon_numeric_nomiss, aes(x= number_of_reviews, y= price, col=(as.factor(cluster))))+ geom_point()
+
+```
 
 ```{r}
 res<- Amazon_numeric_nomiss %>% kmeans(3)
